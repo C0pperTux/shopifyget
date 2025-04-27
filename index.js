@@ -1,27 +1,26 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const axios = require('axios');
+const fs = require('fs');
 
 const app = express();
 app.use(bodyParser.json());
 
-app.post('/shopify-webhook', (req, res) => {
-  const data = req.body;
+app.post('/webhook', (req, res) => {
+    const order = req.body;
+    const playerName = order.note_attributes.find(attr => attr.name === 'Minecraft Username').value;
+    const rank = order.line_items[0].title;
 
-  // Extract Minecraft username from order notes (custom field)
-  const username = data.note_attributes?.find(attr => attr.name === 'username')?.value;
-  const item = data.line_items?.[0]?.title || 'default_item';
+    const logLine = `Player ${playerName} bought rank ${rank}\n`;
 
-  console.log(`Webhook received: Give ${item} to ${username}`);
-
-  // Optional: Send to Minecraft server using WebSender/RCON here
-
-  res.status(200).send('OK');
+    fs.appendFile('shopify-purchases.txt', logLine, (err) => {
+        if (err) {
+            console.error('Failed to write purchase:', err);
+            res.sendStatus(500);
+            return;
+        }
+        console.log('Logged purchase:', logLine);
+        res.sendStatus(200);
+    });
 });
 
-app.get('/', (req, res) => {
-  res.send('Webhook server running');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(3000, () => console.log('Webhook server running on port 3000.'));
